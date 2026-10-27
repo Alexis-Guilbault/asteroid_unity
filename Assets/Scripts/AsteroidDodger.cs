@@ -44,6 +44,11 @@ public class AsteroidDodger : MonoBehaviour
     public float blinkDuration = 1f;
     public float blinkInterval = 0.1f;
 
+    public bool GetShipIsVisible()
+    {
+        return isVisible;
+    }
+
     void Start()
     {
         UpdateViewportLimits();
