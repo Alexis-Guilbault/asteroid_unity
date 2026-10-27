@@ -1,0 +1,203 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class AsteroidDodger : MonoBehaviour
+{
+    public Camera mainCamera;
+
+    public GameObject shipGameObject;
+    public GameObject asteroidGameObject;
+
+    public float scrollSpeed = 5f; // Speed at which world moves left
+
+    public int initialAsteroidCount = 6;
+    public float asteroidMinY = -4f;
+    public float asteroidMaxY = 4f;
+    public float extraSpawnDistance = 3f; 
+
+    public float minSpawnInterval = 0.8f;
+    public float maxSpawnInterval = 2f;
+
+    private float viewLeftX;
+    private float viewRightX;
+
+    private GameObject player;
+
+    private List<GameObject> asteroids = new List<GameObject>();
+
+    private bool gameOver = false;
+
+     private float spawnTimer = 0f;
+    // The target time until the next spawn (randomized)
+    private float currentSpawnInterval = 0f;
+
+
+    void Start()
+    {
+     UpdateViewportLimits();
+     StartGame();
+    }
+
+    void StartGame()
+    {
+           SpawnPlayer();
+
+        CreateAsteroid();
+    }
+
+    public void SetShipY(float targetY)
+    {
+        // Clamp just in case
+
+        player.transform.position = new Vector3(player.transform.position.x, targetY, 0);
+    }
+    void UpdateViewportLimits()
+    {
+        // Viewport coordinates: (0,0) is bottom-left, (1,1) is top-right
+        Vector3 leftEdge = mainCamera.ViewportToWorldPoint(new Vector3(0, 0, 0));
+        Vector3 rightEdge = mainCamera.ViewportToWorldPoint(new Vector3(1, 0, 0));
+
+        viewLeftX = leftEdge.x;
+        viewRightX = rightEdge.x;
+
+        // Debug.Log($"View Left: {viewLeftX:F2}, View Right: {viewRightX:F2}");
+    }
+
+
+    void Update()
+    {
+        UpdateViewportLimits();
+
+        if (gameOver)
+        {
+            if (Input.GetKeyDown(KeyCode.R))
+                RestartGame();
+            return;
+        }
+
+        UpdateAsteroids();
+        CheckCollisions();
+
+        spawnTimer += Time.deltaTime;
+
+        if (spawnTimer >= currentSpawnInterval)
+        {
+            // Reset timer (keep remainder for precision if desired, 
+            // but subtracting interval keeps it simple)
+            spawnTimer -= currentSpawnInterval; 
+            
+            CreateAsteroid();
+            
+            currentSpawnInterval = Random.Range(minSpawnInterval, maxSpawnInterval);
+        }
+    }
+
+    void SpawnPlayer()
+    {
+        player = Instantiate(shipGameObject);
+        // Fixed X position (Left side of screen)
+        player.transform.position = new Vector3(-3, 0, 0);
+    }
+
+
+
+    void CreateAsteroid()
+    {
+        GameObject go = Instantiate(asteroidGameObject);
+
+        // Spawn far to the right (off-screen)
+        float startY = Random.Range(asteroidMinY, asteroidMaxY);
+   
+
+        // Random scale and rotation
+        float scale = Random.Range(0.8f, 1.5f);
+        go.transform.localScale = Vector3.one * scale;
+        go.transform.rotation = Quaternion.Euler(0, 0, Random.Range(0f, 360f));
+
+        Collider2D astCol = go.GetComponent<Collider2D>();
+        float worldWidth = astCol.bounds.size.x;
+        go.transform.position = new Vector3(viewRightX + extraSpawnDistance + worldWidth * 0.5f, startY, 0);
+
+        // BoxCollider2D col = go.AddComponent<BoxCollider2D>();
+        // col.size = new Vector2(scale * 0.8f, scale * 0.8f);
+
+        // go.tag = "Asteroid";
+        asteroids.Add(go);
+    }
+
+    void UpdateAsteroids()
+    {
+        for (int i = asteroids.Count - 1; i >= 0; i--)
+        {
+            GameObject a = asteroids[i];
+
+            // Move Asteroid LEFT (Scrolling effect)
+            a.transform.Translate(Vector3.left * scrollSpeed * Time.deltaTime, Space.World);
+
+            // Rotate slowly
+            a.transform.Rotate(0, 0, 30 * Time.deltaTime);
+
+            Collider2D astCol = a.GetComponent<Collider2D>();
+            float worldWidth = astCol.bounds.size.x;
+
+            // Cleanup if off screen left
+            if (a.transform.position.x < viewLeftX - worldWidth*0.5f )
+            {
+                Destroy(a);
+                asteroids.RemoveAt(i);
+            }
+        }
+    }
+
+    void CheckCollisions()
+    {
+        if (player == null)
+            return;
+
+        Collider2D playerCol = player.GetComponent<Collider2D>();
+
+   
+        foreach (var asteroid in asteroids)
+        {
+            Collider2D astCol = asteroid.GetComponent<Collider2D>();
+       
+
+            // Manual Intersection Check
+            if (playerCol.IsTouching(astCol))
+            {
+                TriggerGameOver();
+                break;
+            }
+        }
+    }
+
+    void TriggerGameOver()
+    {
+        gameOver = true;
+        Debug.Log("GAME OVER! Press 'R' to restart.");
+
+        // Optional: Disable player rendering
+        // if (player != null)
+        // {
+        //     var sr = player.GetComponent<SpriteRenderer>();
+        //     if (sr)
+        //         sr.enabled = false;
+        // }
+    }
+
+    void RestartGame()
+    {
+        foreach (var a in asteroids)
+            if (a)
+                Destroy(a);
+
+        asteroids.Clear();
+
+        // Reset flags
+        gameOver = false;
+
+        StartGame();
+    }
+}
