@@ -328,14 +328,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8ad9acddb3eb44dce9a1f142f16f0ba0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  mainCamera: {fileID: 963194227}
   shipGameObject: {fileID: 196907935095849260, guid: 2dbfff674b0c54c1a89bc19be71a2d17, type: 3}
   asteroidGameObject: {fileID: 7535711514861484708, guid: eb6558117cdab45f1aa00334b99e9b3c, type: 3}
   scrollSpeed: 5
   initialAsteroidCount: 1
   asteroidMinY: -6
   asteroidMaxY: 6
-  spawnDistance: 15
-  camWidth: 6
+  extraSpawnDistance: 3
+  minSpawnInterval: 0.8
+  maxSpawnInterval: 2
+  blinkDuration: 1
+  blinkInterval: 0.1
 --- !u!4 &617091142
 Transform:
   m_ObjectHideFlags: 0

@@ -15,7 +15,7 @@ public class AsteroidDodger : MonoBehaviour
     public int initialAsteroidCount = 6;
     public float asteroidMinY = -4f;
     public float asteroidMaxY = 4f;
-    public float extraSpawnDistance = 3f; 
+    public float extraSpawnDistance = 3f;
 
     public float minSpawnInterval = 0.8f;
     public float maxSpawnInterval = 2f;
@@ -29,30 +29,42 @@ public class AsteroidDodger : MonoBehaviour
 
     private bool gameOver = false;
 
-     private float spawnTimer = 0f;
+    private float spawnTimer = 0f;
+
     // The target time until the next spawn (randomized)
     private float currentSpawnInterval = 0f;
 
+    // Blink tracking
+    private SpriteRenderer playerSpriteRenderer;
+    private bool doBlink = false;
+    private float blinkStartTime = 0f;
+    private bool isVisible = true;
+    private float nextBlinkToggle = 0f;
+
+    public float blinkDuration = 1f;
+    public float blinkInterval = 0.1f;
 
     void Start()
     {
-     UpdateViewportLimits();
-     StartGame();
+        UpdateViewportLimits();
+        StartGame();
     }
 
     void StartGame()
     {
-           SpawnPlayer();
+        SpawnPlayer();
 
         CreateAsteroid();
     }
 
     public void SetShipY(float targetY)
     {
-        // Clamp just in case
+        if (gameOver)
+            return;
 
         player.transform.position = new Vector3(player.transform.position.x, targetY, 0);
     }
+
     void UpdateViewportLimits()
     {
         // Viewport coordinates: (0,0) is bottom-left, (1,1) is top-right
@@ -64,7 +76,6 @@ public class AsteroidDodger : MonoBehaviour
 
         // Debug.Log($"View Left: {viewLeftX:F2}, View Right: {viewRightX:F2}");
     }
-
 
     void Update()
     {
@@ -84,13 +95,49 @@ public class AsteroidDodger : MonoBehaviour
 
         if (spawnTimer >= currentSpawnInterval)
         {
-            // Reset timer (keep remainder for precision if desired, 
+            // Reset timer (keep remainder for precision if desired,
             // but subtracting interval keeps it simple)
-            spawnTimer -= currentSpawnInterval; 
-            
+            spawnTimer -= currentSpawnInterval;
+
             CreateAsteroid();
-            
+
             currentSpawnInterval = Random.Range(minSpawnInterval, maxSpawnInterval);
+        }
+
+        if (doBlink)
+        {
+            HandleBlinking();
+        }
+    }
+
+    void HandleBlinking()
+    {
+        float elapsed = Time.time - blinkStartTime;
+
+
+
+        // Toggle visibility at regular intervals
+        if (Time.time >= nextBlinkToggle)
+        {
+           
+            isVisible = !isVisible;
+      
+            playerSpriteRenderer.enabled = isVisible;
+
+            nextBlinkToggle = Time.time + blinkInterval;
+        }
+
+                // Check if blink duration has passed
+        if (elapsed >= blinkDuration)
+        {
+         
+            // End blinking and trigger game over
+            doBlink = false;
+            isVisible = true;
+
+            playerSpriteRenderer.enabled = true;
+
+            return;
         }
     }
 
@@ -99,9 +146,8 @@ public class AsteroidDodger : MonoBehaviour
         player = Instantiate(shipGameObject);
         // Fixed X position (Left side of screen)
         player.transform.position = new Vector3(-3, 0, 0);
+        playerSpriteRenderer = player.GetComponent<SpriteRenderer>();
     }
-
-
 
     void CreateAsteroid()
     {
@@ -109,7 +155,6 @@ public class AsteroidDodger : MonoBehaviour
 
         // Spawn far to the right (off-screen)
         float startY = Random.Range(asteroidMinY, asteroidMaxY);
-   
 
         // Random scale and rotation
         float scale = Random.Range(0.8f, 1.5f);
@@ -118,7 +163,11 @@ public class AsteroidDodger : MonoBehaviour
 
         Collider2D astCol = go.GetComponent<Collider2D>();
         float worldWidth = astCol.bounds.size.x;
-        go.transform.position = new Vector3(viewRightX + extraSpawnDistance + worldWidth * 0.5f, startY, 0);
+        go.transform.position = new Vector3(
+            viewRightX + extraSpawnDistance + worldWidth * 0.5f,
+            startY,
+            0
+        );
 
         // BoxCollider2D col = go.AddComponent<BoxCollider2D>();
         // col.size = new Vector2(scale * 0.8f, scale * 0.8f);
@@ -143,7 +192,7 @@ public class AsteroidDodger : MonoBehaviour
             float worldWidth = astCol.bounds.size.x;
 
             // Cleanup if off screen left
-            if (a.transform.position.x < viewLeftX - worldWidth*0.5f )
+            if (a.transform.position.x < viewLeftX - worldWidth * 0.5f)
             {
                 Destroy(a);
                 asteroids.RemoveAt(i);
@@ -158,16 +207,17 @@ public class AsteroidDodger : MonoBehaviour
 
         Collider2D playerCol = player.GetComponent<Collider2D>();
 
-   
-        foreach (var asteroid in asteroids)
+        foreach (GameObject asteroid in asteroids)
         {
             Collider2D astCol = asteroid.GetComponent<Collider2D>();
-       
 
             // Manual Intersection Check
             if (playerCol.IsTouching(astCol))
             {
-                TriggerGameOver();
+                doBlink = true;
+                blinkStartTime = Time.time;
+                
+                //TriggerGameOver();
                 break;
             }
         }
@@ -194,6 +244,9 @@ public class AsteroidDodger : MonoBehaviour
                 Destroy(a);
 
         asteroids.Clear();
+
+        if (player)
+            Destroy(player);
 
         // Reset flags
         gameOver = false;
